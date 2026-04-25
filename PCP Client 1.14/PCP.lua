@@ -45,6 +45,30 @@ function PCPFrameRemake_OnLoad(self)
 end
 
 
+-- ============================================================================
+-- Macro Mode
+-- ----------------------------------------------------------------------------
+-- When enabled, PCP buttons insert their command text into the focused macro
+-- body edit box instead of sending the command to the server. Lets the user
+-- build macros by clicking PCP buttons.
+-- ============================================================================
+
+macroMode = false   -- intentionally global, matches PCP's existing pattern
+
+function DispatchCommand(text)
+    if macroMode then
+        local focus = GetCurrentKeyBoardFocus and GetCurrentKeyBoardFocus()
+        if focus == MacroFrameText then
+            focus:Insert(text .. "\n")
+        else
+            DEFAULT_CHAT_FRAME:AddMessage("|cff88ccff[PCP]|r Macro mode is on, but the macro editor isn't focused. Click in the macro body.")
+        end
+    else
+        SendChatMessage(text, GetChatChannel())
+    end
+end
+
+
 if not PCPFrameRemake then
     local frame = CreateFrame("Frame", "PCPFrameRemake", UIParent, "BackdropTemplate")
     frame:SetSize(260, 550)
@@ -80,6 +104,11 @@ if not PCPFrameRemake then
 		controlDeadBotsEnabled = isChecked 
 		DEFAULT_CHAT_FRAME:AddMessage(isChecked and "Dead bot control enabled" or "Dead bot control disabled")
 	end	
+
+	function ToggleMacroModeCheck(PCPFrameRemake, isChecked)
+		macroMode = isChecked
+		DEFAULT_CHAT_FRAME:AddMessage(isChecked and "|cff88ccff[PCP]|r Macro mode enabled" or "|cff88ccff[PCP]|r Macro mode disabled")
+	end
     
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -281,7 +310,7 @@ end)
 
 
 local settingsFrame = CreateFrame("Frame", "PCPSettingsFrame", PCPFrameRemake, "BackdropTemplate")
-settingsFrame:SetSize(200, 150) 
+settingsFrame:SetSize(200, 180) 
 settingsFrame:SetPoint("RIGHT", PCPFrameRemake, "LEFT", -10, 0) 
 settingsFrame:SetBackdrop({
     bgFile = "Interface/Tooltips/UI-Tooltip-Background",
@@ -434,6 +463,27 @@ controllDeadBotsCheck:SetScript("OnClick", function(self)
     local isChecked = self:GetChecked()
     TogglecontrollDeadBotsCheck(PCPFrameRemake, isChecked)
     SaveSettings(defaultColor, nil, nil, isChecked)  
+end)
+
+
+-- Macro Mode checkbox
+local macroModeCheck = CreateFrame("CheckButton", "PCPmacroModeCheck", settingsFrame, "UICheckButtonTemplate")
+macroModeCheck:SetPoint("TOPLEFT", settingsFrame, "TOPLEFT", 10, -130)
+macroModeCheck.text = macroModeCheck:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+macroModeCheck.text:SetPoint("LEFT", macroModeCheck, "RIGHT", 5, 0)
+macroModeCheck.text:SetText("Macro Mode")
+macroModeCheck:SetChecked(false)
+macroModeCheck:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText("Click PCP buttons to insert commands into the focused macro body instead of sending them to your bots.", 1, 1, 1, 1, true)
+    GameTooltip:Show()
+end)
+macroModeCheck:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+end)
+macroModeCheck:SetScript("OnClick", function(self)
+    local isChecked = self:GetChecked()
+    ToggleMacroModeCheck(PCPFrameRemake, isChecked)
 end)
 
 
@@ -1559,7 +1609,7 @@ if not PCPButtonFrame then
 			GameTooltip:Show()
 		end)
 
-		PCPButtonFrame:SetScript("OnLeave", function()
+		PCPButtonFrame:SetScript("OnLeave", function(self)
 			GameTooltip:Hide()
 		end)
 	end
@@ -1685,40 +1735,16 @@ function GetChatChannel()
 end
 
 function SetCommand(arg)
-    local chatChannel = GetChatChannel()
-
-    if controlDeadBotsEnabled then
-        SendChatMessage(CMD_GENERAL .. arg, chatChannel)
-		
-    else
-        SendChatMessage(CMD_GENERAL .. arg, chatChannel)
-        
-    end
+    DispatchCommand(CMD_GENERAL .. arg)
 end
 
 function SetPause()
-    local chatChannel = GetChatChannel()
-
-    if controlDeadBotsEnabled then
-        SendChatMessage(CMD_GENERAL .. " pause ", chatChannel)
-		
-    else
-        SendChatMessage(CMD_GENERAL .. " pause ", chatChannel)
-        
-    end
+    DispatchCommand(CMD_GENERAL .. "pause")
 end
 
 
 function SetUnpause()
-    local chatChannel = GetChatChannel()
-
-    if controlDeadBotsEnabled then
-        SendChatMessage(CMD_GENERAL .. " unpause ", chatChannel)
-        
-    else
-        SendChatMessage(CMD_GENERAL .. " unpause ", chatChannel)
-        
-    end
+    DispatchCommand(CMD_GENERAL .. "unpause")
 end
 
 AddMark = "ccmark"
@@ -1761,19 +1787,19 @@ function MarkSUB()
 end
 
 function SetMark(arg)
-	SendChatMessage(CMD_GENERAL .. AddMark .. " " .. arg);
+	DispatchCommand(CMD_GENERAL .. AddMark .. " " .. arg)
 end
 
 function ShowMark()
-	SendChatMessage(CMD_GENERAL .. AddMark);
+	DispatchCommand(CMD_GENERAL .. AddMark)
 end
 
 function ClearMark()
-	SendChatMessage(CMD_GENERAL .. "clear " .. AddMark);
+	DispatchCommand(CMD_GENERAL .. "clear " .. AddMark)
 end
 
 function ClearAllMark()
-	SendChatMessage(CMD_GENERAL .. "clear");
+	DispatchCommand(CMD_GENERAL .. "clear")
 end
 
 AddToggle = "aoe"
@@ -1812,39 +1838,23 @@ function ToggleSUB()
 end
 
 function SetToggle()
-	SendChatMessage(CMD_GENERAL .."toggle " .. AddToggle);
+	DispatchCommand(CMD_GENERAL .. "toggle " .. AddToggle)
 end
 
 function SubPartyBotClone(self)
-	SendChatMessage(CMD_PARTYBOT_CLONE);
+	DispatchCommand(CMD_PARTYBOT_CLONE)
 end
 
 function SubPartyBotRemove(self)
-	SendChatMessage(CMD_PARTYBOT_REMOVE);
+	DispatchCommand(CMD_PARTYBOT_REMOVE)
 end
 
 function SubPartyBotMoveAll()
-    local chatChannel = GetChatChannel()
-
-    if controlDeadBotsEnabled then
-        SendChatMessage(CMD_PARTYBOT_MAll, chatChannel)
-        
-    else
-        SendChatMessage(CMD_PARTYBOT_MAll, chatChannel)
-        
-    end
+    DispatchCommand(CMD_PARTYBOT_MAll)
 end
 
 function SubPartyBotStayAll()
-    local chatChannel = GetChatChannel()
-
-    if controlDeadBotsEnabled then
-        SendChatMessage(CMD_PARTYBOT_SAll, chatChannel)
-        
-    else
-        SendChatMessage(CMD_PARTYBOT_SAll, chatChannel)
-        
-    end
+    DispatchCommand(CMD_PARTYBOT_SAll)
 end
 
 
@@ -2699,11 +2709,11 @@ function SetBGSUB()
 end
 
 function SubPartyBotAddAdvanced(self)
-	SendChatMessage(CMD_PARTYBOT_ADD .. AddClass .. " " .. AddRole .. " " .. AddGender);
+	DispatchCommand(CMD_PARTYBOT_ADD .. AddClass .. " " .. AddRole .. " " .. AddGender)
 end
 
 function SubPartyBotAdd(self, arg)
-	SendChatMessage(CMD_PARTYBOT_ADD .. arg);
+	DispatchCommand(CMD_PARTYBOT_ADD .. arg)
 end
 
 function Brackets()
@@ -2719,11 +2729,11 @@ end
 
 function SubBattleBotAdd(self, arg1, arg2)
 	RanBotLevel = Brackets()
-	SendChatMessage(CMD_BATTLEBOT_ADD .. arg1 .. " " .. arg2 .. " " .. RanBotLevel);
+	DispatchCommand(CMD_BATTLEBOT_ADD .. arg1 .. " " .. arg2 .. " " .. RanBotLevel)
 end
 
 function SubBattleGo(self, arg1)
-	SendChatMessage(CMD_BATTLEGROUND_GO .. arg1);
+	DispatchCommand(CMD_BATTLEGROUND_GO .. arg1)
 end
 
 function CloseFrame()
