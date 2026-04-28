@@ -57,15 +57,31 @@ macroMode = false   -- intentionally global, matches PCP's existing pattern
 
 function DispatchCommand(text)
     if macroMode then
-        local focus = GetCurrentKeyBoardFocus and GetCurrentKeyBoardFocus()
-        if focus == MacroFrameText then
-            focus:Insert(text .. "\n")
-        else
-            DEFAULT_CHAT_FRAME:AddMessage("|cff88ccff[PCP]|r Macro mode is on, but the macro editor isn't focused. Click in the macro body.")
+        -- Ladda macro UI om den inte redan är laddad
+        if not MacroFrame then
+            if MacroFrame_LoadUI then
+                MacroFrame_LoadUI()
+            end
         end
-    else
-        SendChatMessage(text, GetChatChannel())
+
+        -- Öppna macro-fönstret om det finns men inte syns
+        if MacroFrame and not MacroFrame:IsShown() then
+            ShowMacroFrame()
+        end
+
+        -- Försök sätta focus på macro text-rutan
+        if MacroFrameText then
+            MacroFrameText:SetFocus()
+            MacroFrameText:Insert(text .. "\n")
+        else
+            DEFAULT_CHAT_FRAME:AddMessage("|cff88ccff[PCP]|r Could not find MacroFrameText. Open /macro once and try again.")
+        end
+
+        return
     end
+
+    local chatChannel = GetChatChannel()
+    SendChatMessage(text, chatChannel)
 end
 
 
@@ -324,7 +340,7 @@ settingsFrame:Hide()
 
 local versionText = settingsFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 versionText:SetPoint("BOTTOMRIGHT", settingsFrame, "BOTTOMRIGHT", -10, 10) 
-versionText:SetText("Version 1.1") 
+versionText:SetText("Version 1.2") 
 versionText:SetTextColor(1, 1, 1, 1) 
 
 
